@@ -16,7 +16,6 @@ public class CustomerService {
     private final FraudClient fraudClient;
     private final NotificationClient notificationClient;
 
-
     public void registerCustomer(CustomerRegistrationRequest request) {
         Customer customer = Customer.builder()
                 .firstName(request.firstName())
