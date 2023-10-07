@@ -1,12 +1,12 @@
 package com.dolphin.customer;
 
+import com.dolphin.amqp.RabbitMQMessageProducer;
 import com.dolphin.clients.fraud.FraudCheckResponse;
 import com.dolphin.clients.fraud.FraudClient;
 import com.dolphin.clients.notification.NotificationClient;
 import com.dolphin.clients.notification.NotificationRequest;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 @Service
 @AllArgsConstructor
@@ -15,6 +15,7 @@ public class CustomerService {
     private final CustomerRepository repository;
     private final FraudClient fraudClient;
     private final NotificationClient notificationClient;
+    private final RabbitMQMessageProducer messageProducer;
 
     public void registerCustomer(CustomerRegistrationRequest request) {
         Customer customer = Customer.builder()
@@ -35,14 +36,17 @@ public class CustomerService {
             throw new IllegalStateException("fraudster!");
         }
 
-        //TODO: send notification
+        NotificationRequest notificationRequest = new NotificationRequest(
+                customer.getId(),
+                customer.getEmail(),
+                "Welcome, %s".formatted(customer.getFirstName())
+        );
 
-        notificationClient.sendNotification(
-                new NotificationRequest(
-                        customer.getId(),
-                        customer.getEmail(),
-                        "Welcome, %s".formatted(customer.getFirstName())
-                )
+        // making it async. i.e adding to the queue
+        messageProducer.publish(
+                notificationRequest,
+                "internal.exchange",
+                "internal.notification.routing-key"
         );
     }
 }
